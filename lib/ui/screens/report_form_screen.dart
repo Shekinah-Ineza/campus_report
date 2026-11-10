@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/errors.dart';
+import '../../core/theme.dart';
 import '../../core/validators.dart';
 import '../../models/incident_enums.dart';
 import '../../state/incident_providers.dart';
+import '../widgets/dashed_box.dart';
 
 /// Form for submitting a new incident report, with an optional photo.
 class ReportFormScreen extends ConsumerStatefulWidget {
@@ -108,99 +110,129 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String _shortLabel(IncidentCategory c) => switch (c) {
+        IncidentCategory.facilities => 'Facilities',
+        IncidentCategory.water => 'Water',
+        IncidentCategory.electricity => 'Electricity',
+        IncidentCategory.furniture => 'Furniture',
+        IncidentCategory.sanitation => 'Sanitation',
+        IncidentCategory.safety => 'Safety',
+        IncidentCategory.other => 'Other',
+      };
+
   @override
   Widget build(BuildContext context) {
     ref.listen(reportFormControllerProvider, (_, next) {
       if (next.hasError && !next.isLoading) _snack(friendlyError(next.error));
     });
     final submitting = ref.watch(reportFormControllerProvider).isLoading;
-    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report a problem')),
+      appBar: AppBar(title: const Text('Report an Incident')),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
             children: [
-              Text('What kind of problem is it?', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in IncidentCategory.values)
-                    ChoiceChip(
-                      avatar: Icon(c.icon, size: 18),
-                      label: Text(c.label),
-                      selected: _category == c,
-                      onSelected: submitting
-                          ? null
-                          : (_) => setState(() {
-                                _category = c;
-                                _categoryMissing = false;
-                              }),
-                    ),
-                ],
+              const _Label('Select a category'),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final tileWidth = (constraints.maxWidth - 20) / 3;
+                  return Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final c in IncidentCategory.values)
+                        _CategoryTile(
+                          width: tileWidth,
+                          icon: c.icon,
+                          label: _shortLabel(c),
+                          selected: _category == c,
+                          onTap: submitting
+                              ? null
+                              : () => setState(() {
+                                    _category = c;
+                                    _categoryMissing = false;
+                                  }),
+                        ),
+                    ],
+                  );
+                },
               ),
               if (_categoryMissing)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 12),
-                  child: Text('Choose a category',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error)),
+                const Padding(
+                  padding: EdgeInsets.only(top: 8, left: 4),
+                  child: Text(
+                    'Choose a category',
+                    style: TextStyle(color: Color(0xFFC53030), fontSize: 12),
+                  ),
                 ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
+              const _Label('Title'),
               TextFormField(
                 controller: _title,
                 enabled: !submitting,
                 decoration: const InputDecoration(
-                  labelText: 'Title',
-                  hintText: 'e.g. No water in Block C toilets',
+                  hintText: 'Briefly describe the issue...',
+                  counterText: '',
                 ),
                 maxLength: 100,
                 textCapitalization: TextCapitalization.sentences,
                 textInputAction: TextInputAction.next,
                 validator: Validators.title,
               ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _location,
-                enabled: !submitting,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  hintText: 'e.g. Library, 2nd floor, room 204',
-                  prefixIcon: Icon(Icons.place_outlined),
-                ),
-                maxLength: 100,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.next,
-                validator: Validators.location,
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+              const _Label('Description'),
               TextFormField(
                 controller: _description,
                 enabled: !submitting,
                 decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'What happened, since when, and how it affects people',
-                  alignLabelWithHint: true,
+                  hintText: 'Provide more details about the issue...\n'
+                      'e.g. what happened, when, impact, etc.',
+                  counterText: '',
                 ),
                 minLines: 4,
-                maxLines: 8,
+                maxLines: 6,
                 maxLength: 1000,
                 textCapitalization: TextCapitalization.sentences,
                 validator: Validators.description,
               ),
               const SizedBox(height: 16),
-              Text('Photo (optional)', style: theme.textTheme.titleSmall),
-              const SizedBox(height: 8),
+              const _Label('Location'),
+              TextFormField(
+                controller: _location,
+                enabled: !submitting,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Block B, Room 204',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                  counterText: '',
+                ),
+                maxLength: 100,
+                textCapitalization: TextCapitalization.sentences,
+                validator: Validators.location,
+              ),
+              const SizedBox(height: 16),
+              const _Label('Add a photo', optional: true),
               if (_image == null)
-                OutlinedButton.icon(
-                  onPressed: submitting ? null : _choosePhotoSource,
-                  icon: const Icon(Icons.add_a_photo_outlined),
-                  label: const Text('Add a photo'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: submitting ? null : _choosePhotoSource,
+                    child: const DashedBox(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined, color: AppColors.muted),
+                          SizedBox(height: 6),
+                          Text('Tap to add a photo',
+                              style: TextStyle(color: AppColors.muted, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
                 )
               else
                 Stack(
@@ -223,14 +255,98 @@ class _ReportFormScreenState extends ConsumerState<ReportFormScreen> {
                     ),
                   ],
                 ),
-              const SizedBox(height: 32),
-              FilledButton.icon(
+              const SizedBox(height: 28),
+              FilledButton(
                 onPressed: submitting ? null : _submit,
-                icon: submitting
+                child: submitting
                     ? const SizedBox(
-                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.send),
-                label: Text(submitting ? 'Submitting…' : 'Submit report'),
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Submit Report'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text, {this.optional = false});
+
+  final String text;
+  final bool optional;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text.rich(
+        TextSpan(
+          text: text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.ink,
+          ),
+          children: [
+            if (optional)
+              const TextSpan(
+                text: '  (optional)',
+                style: TextStyle(fontWeight: FontWeight.w400, color: AppColors.muted, fontSize: 12),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
+    required this.width,
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final double width;
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : AppColors.primary;
+    return SizedBox(
+      width: width,
+      height: 72,
+      child: Material(
+        color: selected ? AppColors.primary : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: selected ? AppColors.primary : AppColors.border),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: fg, size: 22),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: selected ? Colors.white : AppColors.ink,
+                ),
               ),
             ],
           ),

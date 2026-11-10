@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors.dart';
 import '../../core/format.dart';
+import '../../core/theme.dart';
 import '../../models/incident.dart';
 import '../../state/auth_providers.dart';
 import '../../state/incident_providers.dart';
 import '../../state/repository_providers.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/incident_card.dart';
 import '../widgets/status_chip.dart';
+import '../widgets/status_progress.dart';
 import '../widgets/status_timeline.dart';
 import 'update_status_sheet.dart';
 
@@ -25,7 +28,7 @@ class IncidentDetailScreen extends ConsumerWidget {
     final incident = incidentAsync.valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Report details')),
+      appBar: AppBar(title: const Text('Incident Details')),
       body: incidentAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(
@@ -67,19 +70,120 @@ class _Details extends ConsumerWidget {
 
   final Incident incident;
 
+  static const _sectionTitle = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.ink,
+  );
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final history = ref.watch(statusHistoryProvider(incident.id));
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: cardDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IncidentThumbnail(incident: incident, size: 72),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          incident.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          incident.location,
+                          style: const TextStyle(fontSize: 13, color: AppColors.muted),
+                        ),
+                        const SizedBox(height: 8),
+                        StatusChip(status: incident.status),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              _InfoRow(
+                icon: Icons.calendar_today_outlined,
+                text: 'Submitted on ${formatDateTime(incident.createdAt)}',
+              ),
+              _InfoRow(icon: Icons.person_outline, text: 'Reported by ${incident.reporterName}'),
+              _InfoRow(icon: incident.category.icon, text: incident.category.label),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text('Status Timeline', style: _sectionTitle),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          decoration: cardDecoration(),
+          child: history.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (e, _) => Text(friendlyError(e)),
+            data: (changes) => StatusProgress(status: incident.status, changes: changes),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const Text('Description', style: _sectionTitle),
+        const SizedBox(height: 8),
+        Text(
+          incident.description,
+          style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.ink),
+        ),
+        if (incident.lastNote.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.support_agent, color: AppColors.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Latest update from staff',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.ink),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(incident.lastNote, style: const TextStyle(color: AppColors.ink)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (incident.hasImage) ...[
+          const SizedBox(height: 20),
+          const Text('Attached Photo', style: _sectionTitle),
+          const SizedBox(height: 10),
           GestureDetector(
             onTap: () => _showFullImage(context, incident.imageUrl!),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               child: AspectRatio(
                 aspectRatio: 16 / 10,
                 child: Image.network(
@@ -94,49 +198,15 @@ class _Details extends ConsumerWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
         ],
-        Text(incident.title, style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            StatusChip(status: incident.status),
-            Chip(
-              avatar: Icon(incident.category.icon, size: 18),
-              label: Text(incident.category.label),
-              visualDensity: VisualDensity.compact,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _InfoRow(icon: Icons.place_outlined, text: incident.location),
-        _InfoRow(icon: Icons.person_outline, text: 'Reported by ${incident.reporterName}'),
-        _InfoRow(icon: Icons.schedule, text: formatDateTime(incident.createdAt)),
-        const SizedBox(height: 16),
-        Text(incident.description, style: theme.textTheme.bodyLarge),
-        if (incident.lastNote.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Card(
-            color: theme.colorScheme.secondaryContainer,
-            margin: EdgeInsets.zero,
-            child: ListTile(
-              leading: const Icon(Icons.support_agent),
-              title: const Text('Latest update from staff'),
-              subtitle: Text(incident.lastNote),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         _MeTooButton(incident: incident),
         const SizedBox(height: 24),
-        Text('Progress', style: theme.textTheme.titleMedium),
+        const Text('Activity', style: _sectionTitle),
         const SizedBox(height: 12),
         history.when(
-          loading: () => const LinearProgressIndicator(),
-          error: (e, _) => Text(friendlyError(e)),
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
           data: (changes) => StatusTimeline(changes: changes),
         ),
       ],

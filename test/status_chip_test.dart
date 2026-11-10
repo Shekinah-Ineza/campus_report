@@ -4,11 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('StatusChip shows the status label and icon', (tester) async {
+  testWidgets('StatusChip shows the status label', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(body: StatusChip(status: IncidentStatus.inProgress)),
     ));
     expect(find.text('In progress'), findsOneWidget);
-    expect(find.byIcon(IncidentStatus.inProgress.icon), findsOneWidget);
   });
 }

@@ -13,9 +13,13 @@ import 'repository_providers.dart';
 // ---------------------------------------------------------------- Reading
 
 /// Live list of all incidents, newest first.
-final incidentsProvider = StreamProvider<List<Incident>>(
-  (ref) => ref.watch(incidentRepositoryProvider).watchIncidents(),
-);
+/// Restarts automatically whenever the signed-in user changes, so a new
+/// sign-in never shows an old "permission denied" error.
+final incidentsProvider = StreamProvider<List<Incident>>((ref) {
+  final user = ref.watch(authStateProvider).valueOrNull;
+  if (user == null) return Stream.value(const <Incident>[]);
+  return ref.watch(incidentRepositoryProvider).watchIncidents();
+});
 
 /// A single incident, kept live so status changes appear instantly.
 final incidentProvider = StreamProvider.autoDispose.family<Incident?, String>(

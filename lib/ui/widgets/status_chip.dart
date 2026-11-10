@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../models/incident_enums.dart';
 
-Color statusColor(IncidentStatus status, ColorScheme scheme) => switch (status) {
-      IncidentStatus.submitted => const Color(0xFF64748B),
-      IncidentStatus.inReview => const Color(0xFFB7791F),
-      IncidentStatus.inProgress => const Color(0xFF2563EB),
-      IncidentStatus.resolved => const Color(0xFF15803D),
-      IncidentStatus.rejected => scheme.error,
+/// Background and text colour for each status pill.
+({Color bg, Color fg}) statusColors(IncidentStatus status) => switch (status) {
+      IncidentStatus.submitted => (bg: const Color(0xFFFFF4DB), fg: const Color(0xFFB7791F)),
+      IncidentStatus.inReview => (bg: const Color(0xFFE3F0FF), fg: const Color(0xFF2B6CB0)),
+      IncidentStatus.inProgress => (bg: const Color(0xFFEDE9FE), fg: const Color(0xFF6C4CF1)),
+      IncidentStatus.resolved => (bg: const Color(0xFFE3F6EA), fg: const Color(0xFF2F855A)),
+      IncidentStatus.rejected => (bg: const Color(0xFFFDE8E8), fg: const Color(0xFFC53030)),
     };
 
-/// A small coloured pill showing an incident's status.
+/// Kept for screens that only need the main colour of a status.
+Color statusColor(IncidentStatus status, ColorScheme scheme) => statusColors(status).fg;
+
+/// A small rounded pill showing an incident's status.
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.status});
 
@@ -18,23 +22,13 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = statusColor(status, Theme.of(context).colorScheme);
+    final c = statusColors(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(status.icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            status.label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
-          ),
-        ],
+      decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(999)),
+      child: Text(
+        status.label,
+        style: TextStyle(color: c.fg, fontWeight: FontWeight.w600, fontSize: 12),
       ),
     );
   }
