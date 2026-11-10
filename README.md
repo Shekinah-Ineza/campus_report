@@ -11,12 +11,16 @@ Students submit reports with a category, description, location and optional phot
 - Submit a report with a category, title, location, description and optional photo
 - Browse all reports in a live feed that updates in real time
 - Search by keyword and filter by category and status
-- View report details, the photo and the full status history
+- View report details, the photo and a status timeline showing every change
+- Press "This affects me too" instead of reporting the same problem twice
+- Home screen with a summary of your own reports, and a Profile page listing them
 
 **For staff**
 - Everything students can do
 - Update a report's status: Submitted → In Review → In Progress → Resolved (or Rejected)
-- Staff dashboard showing open reports by status and category, and the reports waiting longest
+- A separate staff portal home: an overview of all reports on campus, new reports waiting for review, and the open reports waiting longest
+- Leave a note for the student when changing a status
+- Staff dashboard showing reports by status and category, and the average time to resolve
 
 **Security**
 - New sign-ups are always students; staff access is granted by an administrator
@@ -62,8 +66,8 @@ users/{uid}
   name, email, role ("student" or "staff"), createdAt
 
 incidents/{incidentId}
-  title, category, location, description, photoUrl,
-  status, reporterId, createdAt, updatedAt
+  title, category, location, description, imageUrl,
+  status, reporterId, reporterName, upvotes, lastNote, createdAt, updatedAt
   └── status history entries (who changed the status, to what, and when)
 ```
 
@@ -96,7 +100,7 @@ incidents/{incidentId}
    ```
 
 6. **Create a staff account**
-   Register a normal account in the app, then in **Firestore → users** change that account's `role` from `student` to `staff`. Sign out and sign back in.
+   Register a normal account in the app, then in **Firestore → users** change that account's `role` from `student` to `staff`. The app switches to the staff portal automatically.
 
 ## Testing
 
@@ -104,4 +108,4 @@ incidents/{incidentId}
 flutter test
 ```
 
-The tests cover the data models (parsing, default values, status logic) and key widgets such as the status chip. Role-based access was tested manually by confirming that a student account cannot update a report's status.
+The tests cover form validation, search, filter and sort logic, the data models (parsing, default values, status logic) and the status chip widget. Role-based access was tested manually by confirming that a student account cannot update a report's status.
